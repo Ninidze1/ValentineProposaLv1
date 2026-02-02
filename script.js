@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const screen3 = document.getElementById('screen3');
     const screen4 = document.getElementById('screen4');
 
+    
     // State
     let noClickCount = 0;
     const noButtonTexts = [
