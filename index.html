@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#000000">
+    <title>Will You Be My Valentine?</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Landscape orientation overlay for mobile -->
+    <div id="rotate-overlay">
+        <div class="rotate-content">
+            <div class="pixel-phone"></div>
+            <div class="rotate-arrow"></div>
+            <p class="rotate-text">Please rotate your device</p>
+            <p class="rotate-subtext">For the best experience</p>
+        </div>
+    </div>
+
+    <div id="game-container"></div>
+
+    <!-- Utils -->
+    <script src="src/utils/constants.js"></script>
+    <script src="src/utils/math.js"></script>
+
+    <!-- Core -->
+    <script src="src/core/Canvas.js"></script>
+    <script src="src/core/AssetLoader.js"></script>
+    <script src="src/core/InputManager.js"></script>
+    <script src="src/core/StateMachine.js"></script>
+
+    <!-- Entities -->
+    <script src="src/entities/AnimationController.js"></script>
+    <script src="src/entities/Character.js"></script>
+
+    <!-- Effects -->
+    <script src="src/effects/ParticleSystem.js"></script>
+    <script src="src/effects/HeartBurst.js"></script>
+    <script src="src/effects/SplashParticle.js"></script>
+    <script src="src/effects/WakeTrail.js"></script>
+    <script src="src/effects/Ripple.js"></script>
+
+    <!-- Backgrounds -->
+    <script src="src/backgrounds/ParallaxLayer.js"></script>
+    <script src="src/backgrounds/WaterAnimation.js"></script>
+
+    <!-- UI -->
+    <script src="src/ui/Button.js"></script>
+    <script src="src/ui/PromptWidget.js"></script>
+
+    <!-- Scenes -->
+    <script src="src/scenes/Scene.js"></script>
+    <script src="src/scenes/TransitionFade.js"></script>
+    <script src="src/scenes/SceneA_BeachClub.js"></script>
+    <script src="src/scenes/SceneB_StoneBeach.js"></script>
+    <script src="src/scenes/SceneC_EndScreen.js"></script>
+
+    <!-- Main -->
+    <script src="src/Game.js"></script>
+    <script src="src/main.js"></script>
+</body>
+</html>
