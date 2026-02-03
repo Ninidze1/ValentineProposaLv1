@@ -7,13 +7,13 @@ class SceneB_StoneBeach extends Scene {
         this.waterLevel = Math.floor(INTERNAL_HEIGHT * 0.6);  // 162 for 270px height
         this.waterAnimation = new WaterAnimation(this.waterLevel);
 
-        // Characters on beach - Tamo on left, Gio on right
+        // Characters on beach - Tamo on left, Gio on right (use -b variants for scene B)
         this.tamo = new Character(
             this.game,
             200, 230,
-            this.game.assets.getImage('tamo'),
-            this.game.tamoFrameWidth,
-            this.game.tamoFrameHeight,
+            this.game.assets.getImage('tamo-b'),
+            this.game.tamoBFrameWidth || this.game.tamoFrameWidth,
+            this.game.tamoBFrameHeight || this.game.tamoFrameHeight,
             2, 1.0  // normal size
         );
         this.tamo.setAnimation('stand');
@@ -21,9 +21,9 @@ class SceneB_StoneBeach extends Scene {
         this.gio = new Character(
             this.game,
             280, 230,
-            this.game.assets.getImage('gio'),
-            this.game.gioFrameWidth,
-            this.game.gioFrameHeight,
+            this.game.assets.getImage('gio-b'),
+            this.game.gioBFrameWidth || this.game.gioFrameWidth,
+            this.game.gioBFrameHeight || this.game.gioFrameHeight,
             2, 1.15  // Gio is slightly bigger (15% larger)
         );
         this.gio.setAnimation('stand');

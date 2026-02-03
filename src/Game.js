@@ -42,27 +42,50 @@ class Game {
     }
 
     async generateSpriteSheets() {
-        // Load the actual images from assets folder
-        const gioImg = await this.loadImageAsync('assets/sprites/gio.png');
-        const tamoImg = await this.loadImageAsync('assets/sprites/tamo.png');
+        // Load Scene A sprites (gio-a, tamo-a)
+        const gioAImg = await this.loadImageAsync('assets/sprites/gio/gio-a.png');
+        const tamoAImg = await this.loadImageAsync('assets/sprites/tamo/tamo-a.png');
 
-        this.gioFrameWidth = gioImg.width;
-        this.gioFrameHeight = gioImg.height;
-        this.tamoFrameWidth = tamoImg.width;
-        this.tamoFrameHeight = tamoImg.height;
+        this.gioFrameWidth = gioAImg.width;
+        this.gioFrameHeight = gioAImg.height;
+        this.tamoFrameWidth = tamoAImg.width;
+        this.tamoFrameHeight = tamoAImg.height;
 
-        this.assets.images.set('gio-original', gioImg);
-        this.assets.images.set('tamo-original', tamoImg);
+        this.assets.images.set('gio-original', gioAImg);
+        this.assets.images.set('tamo-original', tamoAImg);
 
-        const gioSheet = this.createAnimationSheet(gioImg);
-        this.assets.images.set('gio', gioSheet);
+        const gioASheet = this.createAnimationSheet(gioAImg);
+        this.assets.images.set('gio', gioASheet);  // Default for scene A
 
-        const tamoSheet = this.createAnimationSheet(tamoImg);
-        this.assets.images.set('tamo', tamoSheet);
+        const tamoASheet = this.createAnimationSheet(tamoAImg);
+        this.assets.images.set('tamo', tamoASheet);  // Default for scene A
+
+        // Load Scene B sprites (gio-b, tamo-b)
+        try {
+            const gioBImg = await this.loadImageAsync('assets/sprites/gio/gio-b.png');
+            this.gioBFrameWidth = gioBImg.width;
+            this.gioBFrameHeight = gioBImg.height;
+            const gioBSheet = this.createAnimationSheet(gioBImg);
+            this.assets.images.set('gio-b', gioBSheet);
+        } catch (e) {
+            console.warn('Gio-b sprite not found, using gio-a');
+            this.assets.images.set('gio-b', this.assets.images.get('gio'));
+        }
+
+        try {
+            const tamoBImg = await this.loadImageAsync('assets/sprites/tamo/tamo-b.png');
+            this.tamoBFrameWidth = tamoBImg.width;
+            this.tamoBFrameHeight = tamoBImg.height;
+            const tamoBSheet = this.createAnimationSheet(tamoBImg);
+            this.assets.images.set('tamo-b', tamoBSheet);
+        } catch (e) {
+            console.warn('Tamo-b sprite not found, using tamo-a');
+            this.assets.images.set('tamo-b', this.assets.images.get('tamo'));
+        }
 
         // Load naked sprites (for undressing before swim)
         try {
-            const gioNakedImg = await this.loadImageAsync('assets/sprites/gio-naked.png');
+            const gioNakedImg = await this.loadImageAsync('assets/sprites/gio/gio-naked.png');
             this.gioNakedFrameWidth = gioNakedImg.width;
             this.gioNakedFrameHeight = gioNakedImg.height;
             const gioNakedSheet = this.createAnimationSheet(gioNakedImg);
@@ -72,7 +95,7 @@ class Game {
         }
 
         try {
-            const tamoNakedImg = await this.loadImageAsync('assets/sprites/tamo-naked.png');
+            const tamoNakedImg = await this.loadImageAsync('assets/sprites/tamo/tamo-naked.png');
             this.tamoNakedFrameWidth = tamoNakedImg.width;
             this.tamoNakedFrameHeight = tamoNakedImg.height;
             const tamoNakedSheet = this.createAnimationSheet(tamoNakedImg);
@@ -83,7 +106,7 @@ class Game {
 
         // Load swim sprites (for swimming in water)
         try {
-            const gioSwimImg = await this.loadImageAsync('assets/sprites/gio-swim.png');
+            const gioSwimImg = await this.loadImageAsync('assets/sprites/gio/gio-swim.png');
             this.gioSwimFrameWidth = gioSwimImg.width;
             this.gioSwimFrameHeight = gioSwimImg.height;
             const gioSwimSheet = this.createAnimationSheet(gioSwimImg);
@@ -93,7 +116,7 @@ class Game {
         }
 
         try {
-            const tamoSwimImg = await this.loadImageAsync('assets/sprites/tamo-swim.png');
+            const tamoSwimImg = await this.loadImageAsync('assets/sprites/tamo/tamo-swim.png');
             this.tamoSwimFrameWidth = tamoSwimImg.width;
             this.tamoSwimFrameHeight = tamoSwimImg.height;
             const tamoSwimSheet = this.createAnimationSheet(tamoSwimImg);
