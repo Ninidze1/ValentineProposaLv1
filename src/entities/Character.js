@@ -9,6 +9,7 @@ class Character {
         this.frameHeight = frameHeight;
         this.scale = scale;  // Scale factor for rendering (default 2x)
         this.sizeMultiplier = sizeMultiplier;  // Additional size multiplier for individual characters
+        this.widthMultiplier = 1.0;  // Optional width-only multiplier
         this.flipX = false;
         this.renderMode = 'full';  // 'full' for normal sprites, 'swimming' for head/chest only
 
@@ -54,13 +55,13 @@ class Character {
             // Swimming sprites are head/chest only - smaller size
             const SWIM_TARGET_WIDTH = 45;
             const SWIM_TARGET_HEIGHT = 42;
-            drawWidth = Math.floor(SWIM_TARGET_WIDTH * this.sizeMultiplier);
+            drawWidth = Math.floor(SWIM_TARGET_WIDTH * this.sizeMultiplier * this.widthMultiplier);
             drawHeight = Math.floor(SWIM_TARGET_HEIGHT * this.sizeMultiplier);
         } else {
             // Fixed target size for full body pixel art characters (2x scale)
             const TARGET_WIDTH = 64;
             const TARGET_HEIGHT = 96;
-            drawWidth = Math.floor(TARGET_WIDTH * this.sizeMultiplier);
+            drawWidth = Math.floor(TARGET_WIDTH * this.sizeMultiplier * this.widthMultiplier);
             drawHeight = Math.floor(TARGET_HEIGHT * this.sizeMultiplier);
         }
 

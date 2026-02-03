@@ -67,7 +67,8 @@ class SceneA_BeachClub extends Scene {
     }
 
     onNoClicked() {
-        this.prompt.shrinkNoButton(0.75);
+        // shrinkNoButton now handles animation internally (no factor needed)
+        // Each click shrinks NO by 25% and expands YES accordingly
     }
 
     update(dt) {

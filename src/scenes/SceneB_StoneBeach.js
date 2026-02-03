@@ -16,6 +16,7 @@ class SceneB_StoneBeach extends Scene {
             this.game.tamoBFrameHeight || this.game.tamoFrameHeight,
             2, 1.0  // normal size
         );
+        this.tamo.widthMultiplier = 0.85;  // reduce width only
         this.tamo.setAnimation('stand');
 
         this.gio = new Character(
@@ -27,6 +28,10 @@ class SceneB_StoneBeach extends Scene {
             2, 1.15  // Gio is slightly bigger (15% larger)
         );
         this.gio.setAnimation('stand');
+
+        // Store base Y positions for idle animation
+        this.tamoBaseY = 230;
+        this.gioBaseY = 230;
 
         this.entities.push(this.gio, this.tamo);
 
@@ -87,6 +92,7 @@ class SceneB_StoneBeach extends Scene {
             this.tamo.spritesheet = tamoNakedSprite;
             this.tamo.frameWidth = this.game.tamoNakedFrameWidth || this.game.tamoFrameWidth;
             this.tamo.frameHeight = this.game.tamoNakedFrameHeight || this.game.tamoFrameHeight;
+            this.tamo.widthMultiplier = 0.97;  // slightly wider for naked sprite
         }
 
         this.gio.setAnimation('stand');
@@ -110,6 +116,7 @@ class SceneB_StoneBeach extends Scene {
             this.tamo.frameWidth = this.game.tamoSwimFrameWidth || this.game.tamoFrameWidth;
             this.tamo.frameHeight = this.game.tamoSwimFrameHeight || this.game.tamoFrameHeight;
             this.tamo.renderMode = 'swimming';
+            this.tamo.widthMultiplier = 1.0;  // full width for swim sprite
         }
 
         this.gio.setAnimation('swim');
@@ -117,7 +124,8 @@ class SceneB_StoneBeach extends Scene {
     }
 
     onNoClicked() {
-        this.prompt.shrinkNoButton(0.75);
+        // shrinkNoButton now handles animation internally (no factor needed)
+        // Each click shrinks NO by 25% and expands YES accordingly
     }
 
     update(dt) {
@@ -144,6 +152,16 @@ class SceneB_StoneBeach extends Scene {
 
         if (this.endingSequenceActive) {
             this.updateEndingSequence(dt);
+        } else {
+            // Idle standing animation - subtle breathing/swaying like in Scene A
+            // Each character has slightly different timing for natural feel
+            const tamoBreath = Math.sin(this.time * 1.8) * 1.5;
+            const tamoSway = Math.sin(this.time * 0.9) * 0.5;
+            this.tamo.y = this.tamoBaseY + tamoBreath;
+
+            const gioBreath = Math.sin(this.time * 1.6 + 0.5) * 1.5;
+            const gioSway = Math.sin(this.time * 1.1 + 0.3) * 0.5;
+            this.gio.y = this.gioBaseY + gioBreath;
         }
     }
 
