@@ -49,6 +49,9 @@ export class Game {
     /** @type {boolean} */
     #running = false;
 
+    /** @type {HTMLAudioElement|null} */
+    #bgMusic = null;
+
     // Character frame dimensions
     /** @type {number} */
     gioFrameWidth = CHARACTER.DEFAULT_FRAME_WIDTH;
@@ -117,6 +120,8 @@ export class Game {
         };
 
         this.#setupStateMachine();
+        // Music is now handled in main.js with user interaction
+        // this.#initBackgroundMusic();
 
         this.#running = true;
         this.#lastTime = performance.now();
@@ -228,6 +233,16 @@ export class Game {
     }
 
     /**
+     * Initialize and play background music
+     */
+    #initBackgroundMusic() {
+        this.#bgMusic = new Audio('assets/music/scene-b.wav');
+        this.#bgMusic.loop = true;
+        this.#bgMusic.volume = 0.15;
+        this.#bgMusic.play();
+    }
+
+    /**
      * Setup the state machine with all scenes
      */
     #setupStateMachine() {
@@ -295,6 +310,10 @@ export class Game {
         this.#running = false;
         if (this.input) {
             this.input.destroy();
+        }
+        if (this.#bgMusic) {
+            this.#bgMusic.pause();
+            this.#bgMusic = null;
         }
     }
 }

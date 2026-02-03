@@ -323,3 +323,72 @@ html {
         padding: 0;
     }
 }
+
+/* ======================================
+   START SCREEN OVERLAY
+   ====================================== */
+
+#start-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    background: #1a0a14;
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+#start-overlay.hidden {
+    display: none !important;
+}
+
+.start-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+    text-align: center;
+}
+
+.start-title {
+    font-family: monospace;
+    font-size: 42px;
+    color: #ff6b6b;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    text-shadow: 2px 2px 0 #ff8e8e;
+    animation: title-pulse 2s ease-in-out infinite;
+}
+
+.start-subtitle {
+    font-family: monospace;
+    font-size: 14px;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    animation: subtitle-blink 1s ease-in-out infinite;
+}
+
+@keyframes title-pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes subtitle-blink {
+    0%, 100% {
+        opacity: 0.8;
+    }
+    50% {
+        opacity: 0.4;
+    }
+}
