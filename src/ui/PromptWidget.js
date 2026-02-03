@@ -1,133 +1,267 @@
-// PromptWidget.js - Compact YES/NO prompt with shrinking NO button
-class PromptWidget {
+/**
+ * @fileoverview YES/NO prompt widget with shrinking NO button
+ * @module ui/PromptWidget
+ */
+
+import {
+    INTERNAL_WIDTH,
+    INTERNAL_HEIGHT,
+    COLORS,
+    PROMPT_UI,
+    TIMING,
+} from '../utils/constants.js';
+import { smoothstep } from '../utils/math.js';
+
+/**
+ * @typedef {Object} PromptConfig
+ * @property {string} question - Question text (supports \n for line breaks)
+ * @property {function(): void} [onYes] - YES button callback
+ * @property {function(): void} [onNo] - NO button callback
+ */
+
+/**
+ * @typedef {Object} ButtonState
+ * @property {number} x - X position
+ * @property {number} y - Y position
+ * @property {number} width - Button width
+ * @property {number} height - Button height
+ * @property {string} text - Button label
+ * @property {string} color - Background color
+ * @property {string} textColor - Text color
+ * @property {boolean} visible - Visibility flag
+ * @property {number} [scale] - Scale factor (NO button only)
+ */
+
+/**
+ * YES/NO prompt widget with animated shrinking NO button
+ */
+export class PromptWidget {
+    /** @type {string} */
+    #question;
+
+    /** @type {function(): void|null} */
+    #onYes;
+
+    /** @type {function(): void|null} */
+    #onNo;
+
+    /** @type {boolean} */
+    #visible = true;
+
+    /** @type {boolean} */
+    #noButtonHidden = false;
+
+    /** @type {string[]} */
+    #questionLines;
+
+    /** @type {number} */
+    #frameX;
+
+    /** @type {number} */
+    #frameY;
+
+    /** @type {number} */
+    #frameWidth;
+
+    /** @type {number} */
+    #frameHeight;
+
+    /** @type {number} */
+    #textX;
+
+    /** @type {number} */
+    #textStartY;
+
+    /** @type {number} */
+    #buttonsY;
+
+    /** @type {number} */
+    #buttonAreaWidth;
+
+    /** @type {number} */
+    #buttonAreaX;
+
+    /** @type {number} */
+    #shrinkProgress = 0;
+
+    /** @type {number} */
+    #targetShrinkProgress = 0;
+
+    /** @type {number} */
+    #initialYesX;
+
+    /** @type {number} */
+    #initialNoX;
+
+    /** @type {number} */
+    #finalYesX;
+
+    /** @type {number} */
+    #finalYesWidth;
+
+    /** @type {ButtonState} */
+    #yesButton;
+
+    /** @type {ButtonState} */
+    #noButton;
+
+    /**
+     * @param {PromptConfig} config
+     */
     constructor(config) {
-        this.question = config.question;
-        this.onYes = config.onYes;
-        this.onNo = config.onNo;
+        this.#question = config.question;
+        this.#onYes = config.onYes ?? null;
+        this.#onNo = config.onNo ?? null;
 
-        this.visible = true;
-        this.noButtonHidden = false;
+        this.#questionLines = this.#question.split('\n').map(line => line.trim());
 
-        // Parse question lines (split by \n)
-        this.questionLines = this.question.split('\n').map(line => line.trim());
+        this.#calculateLayout();
+        this.#initializeButtons();
+    }
 
-        // Layout constants - compact UI spacing
-        this.padding = 8;
-        this.lineHeight = 11;
-        this.textButtonGap = 6;
-        this.buttonGap = 16;
+    /**
+     * Calculate frame and button layout
+     */
+    #calculateLayout() {
+        const textHeight = this.#questionLines.length * PROMPT_UI.LINE_HEIGHT;
+        const contentHeight = textHeight + PROMPT_UI.TEXT_BUTTON_GAP + PROMPT_UI.BUTTON_HEIGHT;
 
-        // Initial button dimensions
-        this.initialButtonWidth = 44;
-        this.initialButtonHeight = 14;
+        this.#frameHeight = contentHeight + (PROMPT_UI.PADDING * 2);
+        this.#frameWidth = PROMPT_UI.FRAME_WIDTH;
 
-        // Calculate content dimensions
-        const textHeight = this.questionLines.length * this.lineHeight;
-        const contentHeight = textHeight + this.textButtonGap + this.initialButtonHeight;
-        const frameHeight = contentHeight + (this.padding * 2);
-        const frameWidth = 220;
+        this.#frameX = (INTERNAL_WIDTH - this.#frameWidth) / 2;
+        this.#frameY = INTERNAL_HEIGHT - this.#frameHeight - PROMPT_UI.BOTTOM_MARGIN;
 
-        // Position frame at bottom center
-        this.frameX = (INTERNAL_WIDTH - frameWidth) / 2;
-        this.frameY = INTERNAL_HEIGHT - frameHeight - 8;
-        this.frameWidth = frameWidth;
-        this.frameHeight = frameHeight;
+        this.#textX = INTERNAL_WIDTH / 2;
+        this.#textStartY = this.#frameY + PROMPT_UI.PADDING + 8;
 
-        // Calculate text position
-        this.textX = INTERNAL_WIDTH / 2;
-        this.textStartY = this.frameY + this.padding + 8;
+        this.#buttonsY = this.#frameY + PROMPT_UI.PADDING + textHeight + PROMPT_UI.TEXT_BUTTON_GAP;
+        this.#buttonAreaWidth = this.#frameWidth - 16;
+        this.#buttonAreaX = this.#frameX + 8;
 
-        // Button area (where buttons live)
-        this.buttonsY = this.frameY + this.padding + textHeight + this.textButtonGap;
-        this.buttonAreaWidth = this.frameWidth - 16; // 16px total padding (8 each side)
-        this.buttonAreaX = this.frameX + 8;
+        // Initial button positions
+        this.#initialYesX = this.#buttonAreaX + (this.#buttonAreaWidth / 2) -
+            PROMPT_UI.BUTTON_WIDTH - (PROMPT_UI.BUTTON_GAP / 2);
+        this.#initialNoX = this.#buttonAreaX + (this.#buttonAreaWidth / 2) + (PROMPT_UI.BUTTON_GAP / 2);
 
-        // Animation state
-        this.shrinkProgress = 0; // 0 = normal, 1 = NO fully hidden, YES fully expanded
-        this.targetShrinkProgress = 0;
-        this.animationSpeed = 3; // How fast the animation happens
+        // Final YES button state
+        this.#finalYesX = this.#buttonAreaX;
+        this.#finalYesWidth = this.#buttonAreaWidth;
+    }
 
-        // Store initial positions for lerping
-        this.initialYesX = this.buttonAreaX + (this.buttonAreaWidth / 2) - this.initialButtonWidth - (this.buttonGap / 2);
-        this.initialNoX = this.buttonAreaX + (this.buttonAreaWidth / 2) + (this.buttonGap / 2);
-
-        // Final YES button state (fills button area with padding)
-        this.finalYesX = this.buttonAreaX;
-        this.finalYesWidth = this.buttonAreaWidth;
-
-        // Create buttons with initial state
-        this.yesButton = {
-            x: this.initialYesX,
-            y: this.buttonsY,
-            width: this.initialButtonWidth,
-            height: this.initialButtonHeight,
-            text: "YES",
+    /**
+     * Initialize button states
+     */
+    #initializeButtons() {
+        this.#yesButton = {
+            x: this.#initialYesX,
+            y: this.#buttonsY,
+            width: PROMPT_UI.BUTTON_WIDTH,
+            height: PROMPT_UI.BUTTON_HEIGHT,
+            text: 'YES',
             color: COLORS.pink,
             textColor: COLORS.white,
-            visible: true
+            visible: true,
         };
 
-        this.noButton = {
-            x: this.initialNoX,
-            y: this.buttonsY,
-            width: this.initialButtonWidth,
-            height: this.initialButtonHeight,
-            text: "NO",
+        this.#noButton = {
+            x: this.#initialNoX,
+            y: this.#buttonsY,
+            width: PROMPT_UI.BUTTON_WIDTH,
+            height: PROMPT_UI.BUTTON_HEIGHT,
+            text: 'NO',
             color: COLORS.gray,
             textColor: COLORS.white,
             visible: true,
-            scale: 1
+            scale: 1,
         };
     }
 
-    handleYes() {
-        if (this.onYes) {
-            this.onYes();
+    /**
+     * Get visibility state
+     * @returns {boolean}
+     */
+    get visible() {
+        return this.#visible;
+    }
+
+    /**
+     * Handle YES button click
+     */
+    #handleYes() {
+        if (this.#onYes) {
+            this.#onYes();
         }
     }
 
-    handleNo() {
-        if (this.onNo) {
-            this.onNo();
+    /**
+     * Handle NO button click
+     */
+    #handleNo() {
+        if (this.#onNo) {
+            this.#onNo();
         }
     }
 
+    /**
+     * Shrink the NO button
+     */
     shrinkNoButton() {
-        // Increment target progress (each click shrinks more)
-        this.targetShrinkProgress = Math.min(this.targetShrinkProgress + 0.25, 1);
+        this.#targetShrinkProgress = Math.min(
+            this.#targetShrinkProgress + TIMING.SHRINK_INCREMENT,
+            1
+        );
 
-        if (this.targetShrinkProgress >= 1) {
-            this.noButtonHidden = true;
+        if (this.#targetShrinkProgress >= 1) {
+            this.#noButtonHidden = true;
         }
     }
 
+    /**
+     * Hide the prompt
+     */
     hide() {
-        this.visible = false;
+        this.#visible = false;
     }
 
+    /**
+     * Show the prompt
+     */
     show() {
-        this.visible = true;
+        this.#visible = true;
     }
 
+    /**
+     * Check which button contains the point
+     * @param {number} px - Point X
+     * @param {number} py - Point Y
+     * @returns {'yes'|'no'|false}
+     */
     containsPoint(px, py) {
-        if (!this.visible) return false;
+        if (!this.#visible) {
+            return false;
+        }
 
         // Check YES button
-        if (px >= this.yesButton.x && px <= this.yesButton.x + this.yesButton.width &&
-            py >= this.yesButton.y && py <= this.yesButton.y + this.yesButton.height) {
+        if (px >= this.#yesButton.x &&
+            px <= this.#yesButton.x + this.#yesButton.width &&
+            py >= this.#yesButton.y &&
+            py <= this.#yesButton.y + this.#yesButton.height) {
             return 'yes';
         }
 
-        // Check NO button (if visible and has size)
-        if (!this.noButtonHidden && this.noButton.scale > 0.1) {
-            const noScale = this.noButton.scale;
-            const noCenterX = this.noButton.x + this.initialButtonWidth / 2;
-            const noCenterY = this.noButton.y + this.initialButtonHeight / 2;
-            const noHalfW = (this.initialButtonWidth * noScale) / 2;
-            const noHalfH = (this.initialButtonHeight * noScale) / 2;
+        // Check NO button
+        if (!this.#noButtonHidden && this.#noButton.scale > 0.1) {
+            const noScale = this.#noButton.scale;
+            const noCenterX = this.#noButton.x + PROMPT_UI.BUTTON_WIDTH / 2;
+            const noCenterY = this.#noButton.y + PROMPT_UI.BUTTON_HEIGHT / 2;
+            const noHalfW = (PROMPT_UI.BUTTON_WIDTH * noScale) / 2;
+            const noHalfH = (PROMPT_UI.BUTTON_HEIGHT * noScale) / 2;
 
-            if (px >= noCenterX - noHalfW && px <= noCenterX + noHalfW &&
-                py >= noCenterY - noHalfH && py <= noCenterY + noHalfH) {
+            if (px >= noCenterX - noHalfW &&
+                px <= noCenterX + noHalfW &&
+                py >= noCenterY - noHalfH &&
+                py <= noCenterY + noHalfH) {
                 return 'no';
             }
         }
@@ -135,60 +269,91 @@ class PromptWidget {
         return false;
     }
 
+    /**
+     * Handle click event
+     * @param {number} x - Click X
+     * @param {number} y - Click Y
+     * @returns {boolean} True if click was handled
+     */
     handleClick(x, y) {
         const hit = this.containsPoint(x, y);
+
         if (hit === 'yes') {
-            this.handleYes();
+            this.#handleYes();
             return true;
         } else if (hit === 'no') {
             this.shrinkNoButton();
-            this.handleNo();
+            this.#handleNo();
             return true;
         }
+
         return false;
     }
 
+    /**
+     * Update widget animation
+     * @param {number} dt - Delta time in seconds
+     */
     update(dt) {
-        if (!this.visible) return;
+        if (!this.#visible) {
+            return;
+        }
 
         // Animate shrink progress toward target
-        if (this.shrinkProgress < this.targetShrinkProgress) {
-            this.shrinkProgress = Math.min(
-                this.shrinkProgress + dt * this.animationSpeed,
-                this.targetShrinkProgress
+        if (this.#shrinkProgress < this.#targetShrinkProgress) {
+            this.#shrinkProgress = Math.min(
+                this.#shrinkProgress + dt * TIMING.PROMPT_ANIMATION_SPEED,
+                this.#targetShrinkProgress
             );
         }
 
-        // Update NO button scale (shrinks as progress increases)
-        this.noButton.scale = 1 - this.shrinkProgress;
-
-        // Update YES button position and size (expands and centers as progress increases)
-        const p = this.shrinkProgress;
+        // Update NO button scale
+        this.#noButton.scale = 1 - this.#shrinkProgress;
 
         // Ease the progress for smoother animation
-        const easedP = p * p * (3 - 2 * p); // smoothstep
+        const easedP = smoothstep(this.#shrinkProgress);
 
-        // Lerp YES button x position (moves left toward center)
-        this.yesButton.x = this.initialYesX + (this.finalYesX - this.initialYesX) * easedP;
+        // Lerp YES button position and size
+        this.#yesButton.x = this.#initialYesX +
+            (this.#finalYesX - this.#initialYesX) * easedP;
+        this.#yesButton.width = PROMPT_UI.BUTTON_WIDTH +
+            (this.#finalYesWidth - PROMPT_UI.BUTTON_WIDTH) * easedP;
 
-        // Lerp YES button width (expands to fill area)
-        this.yesButton.width = this.initialButtonWidth + (this.finalYesWidth - this.initialButtonWidth) * easedP;
-
-        // Move NO button to the right as it shrinks (stays at edge of YES button)
-        const yesRightEdge = this.yesButton.x + this.yesButton.width;
-        this.noButton.x = yesRightEdge + this.buttonGap * (1 - easedP);
+        // Move NO button to the right as it shrinks
+        const yesRightEdge = this.#yesButton.x + this.#yesButton.width;
+        this.#noButton.x = yesRightEdge + PROMPT_UI.BUTTON_GAP * (1 - easedP);
     }
 
+    /**
+     * Render the prompt widget
+     * @param {CanvasRenderingContext2D} ctx
+     */
     render(ctx) {
-        if (!this.visible) return;
+        if (!this.#visible) {
+            return;
+        }
 
-        // Draw frame background with rounded corners
+        this.#renderFrame(ctx);
+        this.#renderQuestion(ctx);
+        this.#renderButton(ctx, this.#yesButton, 1);
+
+        if (!this.#noButtonHidden && this.#noButton.scale > 0.05) {
+            this.#renderButton(ctx, this.#noButton, this.#noButton.scale);
+        }
+    }
+
+    /**
+     * Render the frame background
+     * @param {CanvasRenderingContext2D} ctx
+     */
+    #renderFrame(ctx) {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-        const radius = 8;
-        const x = this.frameX;
-        const y = this.frameY;
-        const w = this.frameWidth;
-        const h = this.frameHeight;
+
+        const radius = PROMPT_UI.CORNER_RADIUS;
+        const x = this.#frameX;
+        const y = this.#frameY;
+        const w = this.#frameWidth;
+        const h = this.#frameHeight;
 
         ctx.beginPath();
         ctx.moveTo(x + radius, y);
@@ -202,31 +367,40 @@ class PromptWidget {
         ctx.quadraticCurveTo(x, y, x + radius, y);
         ctx.fill();
 
-        // Draw border
+        // Border
         ctx.strokeStyle = 'rgba(255, 107, 107, 0.5)';
         ctx.lineWidth = 1;
         ctx.stroke();
+    }
 
-        // Draw question text (centered)
+    /**
+     * Render the question text
+     * @param {CanvasRenderingContext2D} ctx
+     */
+    #renderQuestion(ctx) {
         ctx.fillStyle = COLORS.white;
         ctx.font = '8px monospace';
         ctx.textAlign = 'center';
 
-        this.questionLines.forEach((line, i) => {
-            ctx.fillText(line, this.textX, this.textStartY + (i * this.lineHeight));
-        });
-
-        // Draw YES button
-        this.renderButton(ctx, this.yesButton, 1);
-
-        // Draw NO button (if not fully hidden)
-        if (!this.noButtonHidden && this.noButton.scale > 0.05) {
-            this.renderButton(ctx, this.noButton, this.noButton.scale);
+        for (let i = 0; i < this.#questionLines.length; i++) {
+            ctx.fillText(
+                this.#questionLines[i],
+                this.#textX,
+                this.#textStartY + (i * PROMPT_UI.LINE_HEIGHT)
+            );
         }
     }
 
-    renderButton(ctx, btn, scale) {
-        if (scale <= 0) return;
+    /**
+     * Render a button
+     * @param {CanvasRenderingContext2D} ctx
+     * @param {ButtonState} btn - Button state
+     * @param {number} scale - Scale factor
+     */
+    #renderButton(ctx, btn, scale) {
+        if (scale <= 0) {
+            return;
+        }
 
         ctx.save();
 
@@ -236,7 +410,7 @@ class PromptWidget {
         ctx.translate(cx, cy);
         ctx.scale(scale, scale);
 
-        // Button background
+        // Background
         ctx.fillStyle = btn.color;
         ctx.fillRect(
             Math.floor(-btn.width / 2),
@@ -245,7 +419,7 @@ class PromptWidget {
             btn.height
         );
 
-        // Button border
+        // Border
         ctx.strokeStyle = btn.textColor;
         ctx.lineWidth = 1;
         ctx.strokeRect(
@@ -255,7 +429,7 @@ class PromptWidget {
             btn.height
         );
 
-        // Button text
+        // Text
         ctx.fillStyle = btn.textColor;
         ctx.font = '8px monospace';
         ctx.textAlign = 'center';
@@ -265,3 +439,5 @@ class PromptWidget {
         ctx.restore();
     }
 }
+
+export default PromptWidget;

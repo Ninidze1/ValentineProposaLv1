@@ -1,87 +1,192 @@
-// SceneB_StoneBeach.js - Stone beach night scene with simplified ending
-class SceneB_StoneBeach extends Scene {
+/**
+ * @fileoverview Stone beach night scene with ending sequence
+ * @module scenes/SceneB_StoneBeach
+ */
+
+import { Scene } from './Scene.js';
+import { Character } from '../entities/Character.js';
+import { PromptWidget } from '../ui/PromptWidget.js';
+import { HeartBurst } from '../effects/HeartBurst.js';
+import { SplashEffect } from '../effects/SplashParticle.js';
+import { RippleEffect } from '../effects/Ripple.js';
+import { Fireflies } from '../effects/Fireflies.js';
+import { ShootingStars } from '../effects/ShootingStar.js';
+import { TouchHearts } from '../effects/TouchHearts.js';
+import { MoonReflection } from '../effects/MoonReflection.js';
+import { DynamicWaves } from '../effects/DynamicWaves.js';
+import { WaterAnimation } from '../backgrounds/WaterAnimation.js';
+import {
+    INTERNAL_WIDTH,
+    INTERNAL_HEIGHT,
+    SCENE_B_CONFIG,
+    ENDING_PHASES,
+    SWIM_CONFIG,
+    SPRITE_KEYS
+} from '../utils/constants.js';
+import { lerp } from '../utils/math.js';
+
+/**
+ * Stone beach night scene with romantic ending sequence
+ */
+export class SceneB_StoneBeach extends Scene {
+    /** @type {number} */
+    #time = 0;
+
+    /** @type {number} */
+    #waterLevel;
+
+    /** @type {WaterAnimation} */
+    #waterAnimation;
+
+    /** @type {Character} */
+    tamo;
+
+    /** @type {Character} */
+    gio;
+
+    /** @type {number} */
+    #tamoBaseY;
+
+    /** @type {number} */
+    #gioBaseY;
+
+    /** @type {PromptWidget} */
+    #prompt;
+
+    /** @type {boolean} */
+    #endingSequenceActive = false;
+
+    /** @type {number} */
+    #endingTimer = 0;
+
+    /** @type {number} */
+    #fadeAlpha = 0;
+
+    /** @type {boolean} */
+    #switchedToNaked = false;
+
+    /** @type {boolean} */
+    #switchedToSwim = false;
+
+    /** @type {number} */
+    #swimDirection = 1;
+
+    /** @type {SplashEffect} */
+    #splashEffect;
+
+    /** @type {RippleEffect} */
+    #rippleEffect;
+
+    /** @type {Fireflies} */
+    #fireflies;
+
+    /** @type {ShootingStars} */
+    #shootingStars;
+
+    /** @type {TouchHearts} */
+    #touchHearts;
+
+    /** @type {MoonReflection} */
+    #moonReflection;
+
+    /** @type {DynamicWaves} */
+    #dynamicWaves;
+
+    /** @type {number} */
+    #rippleTimer = 0;
+
+    /**
+     * Setup scene
+     * @param {Object} [params] - Scene parameters
+     */
     setup(params) {
-        this.time = 0;
+        this.#time = 0;
 
-        // Water animation - water level at 60% from top (40% from bottom)
-        this.waterLevel = Math.floor(INTERNAL_HEIGHT * 0.6);  // 162 for 270px height
-        this.waterAnimation = new WaterAnimation(this.waterLevel);
+        // Water level at 60% from top
+        this.#waterLevel = Math.floor(INTERNAL_HEIGHT * SCENE_B_CONFIG.WATER_LEVEL_PERCENT);
+        this.#waterAnimation = new WaterAnimation(this.#waterLevel);
 
-        // Characters on beach - Tamo on left, Gio on right (use -b variants for scene B)
-        this.tamo = new Character(
-            this.game,
-            200, 230,
-            this.game.assets.getImage('tamo-b'),
-            this.game.tamoBFrameWidth || this.game.tamoFrameWidth,
-            this.game.tamoBFrameHeight || this.game.tamoFrameHeight,
-            2, 1.0  // normal size
-        );
-        this.tamo.widthMultiplier = 0.85;  // reduce width only
+        // Characters on beach - Tamo on left, Gio on right
+        this.tamo = new Character({
+            game: this.game,
+            x: SCENE_B_CONFIG.TAMO_X,
+            y: SCENE_B_CONFIG.TAMO_Y,
+            spritesheet: this.game.assets.getImage(SPRITE_KEYS.TAMO_B),
+            frameWidth: this.game.tamoBFrameWidth || this.game.tamoFrameWidth,
+            frameHeight: this.game.tamoBFrameHeight || this.game.tamoFrameHeight,
+            scale: 2,
+            sizeMultiplier: 1.0
+        });
+        this.tamo.widthMultiplier = SCENE_B_CONFIG.TAMO_WIDTH_MULTIPLIER;
         this.tamo.setAnimation('stand');
 
-        this.gio = new Character(
-            this.game,
-            280, 230,
-            this.game.assets.getImage('gio-b'),
-            this.game.gioBFrameWidth || this.game.gioFrameWidth,
-            this.game.gioBFrameHeight || this.game.gioFrameHeight,
-            2, 1.15  // Gio is slightly bigger (15% larger)
-        );
+        this.gio = new Character({
+            game: this.game,
+            x: SCENE_B_CONFIG.GIO_X,
+            y: SCENE_B_CONFIG.GIO_Y,
+            spritesheet: this.game.assets.getImage(SPRITE_KEYS.GIO_B),
+            frameWidth: this.game.gioBFrameWidth || this.game.gioFrameWidth,
+            frameHeight: this.game.gioBFrameHeight || this.game.gioFrameHeight,
+            scale: 2,
+            sizeMultiplier: SCENE_B_CONFIG.GIO_SIZE_MULTIPLIER
+        });
         this.gio.setAnimation('stand');
 
-        // Store base Y positions for idle animation
-        this.tamoBaseY = 230;
-        this.gioBaseY = 230;
+        this.#tamoBaseY = SCENE_B_CONFIG.TAMO_Y;
+        this.#gioBaseY = SCENE_B_CONFIG.GIO_Y;
 
         this.entities.push(this.gio, this.tamo);
 
-        // Prompt widget - use \n for explicit line break
-        this.prompt = new PromptWidget({
+        // Prompt widget
+        this.#prompt = new PromptWidget({
             question: "Will you be my Valentine tonight,\nand every day after?",
-            onYes: () => this.onYesClicked(),
-            onNo: () => this.onNoClicked()
+            onYes: () => this.#onYesClicked(),
+            onNo: () => this.#onNoClicked()
         });
-        this.ui.push(this.prompt);
+        this.ui.push(this.#prompt);
 
-        // Ending sequence state
-        this.endingSequenceActive = false;
-        this.endingTimer = 0;
-        this.fadeAlpha = 0;
-        this.switchedToNaked = false;  // Immediately on YES click
-        this.switchedToSwim = false;   // After 2 seconds
-        this.swimDirection = 1;  // 1 = right, -1 = left
+        // Reset ending sequence state
+        this.#endingSequenceActive = false;
+        this.#endingTimer = 0;
+        this.#fadeAlpha = 0;
+        this.#switchedToNaked = false;
+        this.#switchedToSwim = false;
+        this.#swimDirection = 1;
 
         // Effects
-        this.splashEffect = new SplashEffect();
-        this.rippleEffect = new RippleEffect();
+        this.#splashEffect = new SplashEffect();
+        this.#rippleEffect = new RippleEffect();
+        this.#fireflies = new Fireflies(12);
+        this.#shootingStars = new ShootingStars();
+        this.#touchHearts = new TouchHearts();
+        this.#moonReflection = new MoonReflection(400, this.#waterLevel);
+        this.#dynamicWaves = new DynamicWaves(this.#waterLevel);
 
-        // New atmospheric effects - use correct water level
-        this.fireflies = new Fireflies(12);
-        this.shootingStars = new ShootingStars();
-        this.touchHearts = new TouchHearts();
-        this.moonReflection = new MoonReflection(400, this.waterLevel);
-        this.dynamicWaves = new DynamicWaves(this.waterLevel);
-
-        this.rippleTimer = 0;
+        this.#rippleTimer = 0;
     }
 
-    onYesClicked() {
-        this.endingSequenceActive = true;
-        this.endingTimer = 0;
-        this.prompt.hide();
+    /**
+     * Handle YES button click
+     */
+    #onYesClicked() {
+        this.#endingSequenceActive = true;
+        this.#endingTimer = 0;
+        this.#prompt.hide();
 
-        // Immediately switch to naked sprites
-        this.switchToNakedSprites();
+        this.#switchToNakedSprites();
 
         const burst = new HeartBurst(INTERNAL_WIDTH / 2, 160, 50);
         this.effects.push(burst);
     }
 
-    switchToNakedSprites() {
-        this.switchedToNaked = true;
+    /**
+     * Switch to naked sprites
+     */
+    #switchToNakedSprites() {
+        this.#switchedToNaked = true;
 
-        const gioNakedSprite = this.game.assets.getImage('gio-naked');
-        const tamoNakedSprite = this.game.assets.getImage('tamo-naked');
+        const gioNakedSprite = this.game.assets.getImage(SPRITE_KEYS.GIO_NAKED);
+        const tamoNakedSprite = this.game.assets.getImage(SPRITE_KEYS.TAMO_NAKED);
 
         if (gioNakedSprite) {
             this.gio.spritesheet = gioNakedSprite;
@@ -92,18 +197,21 @@ class SceneB_StoneBeach extends Scene {
             this.tamo.spritesheet = tamoNakedSprite;
             this.tamo.frameWidth = this.game.tamoNakedFrameWidth || this.game.tamoFrameWidth;
             this.tamo.frameHeight = this.game.tamoNakedFrameHeight || this.game.tamoFrameHeight;
-            this.tamo.widthMultiplier = 0.97;  // slightly wider for naked sprite
+            this.tamo.widthMultiplier = 0.97;
         }
 
         this.gio.setAnimation('stand');
         this.tamo.setAnimation('stand');
     }
 
-    switchToSwimSprites() {
-        this.switchedToSwim = true;
+    /**
+     * Switch to swim sprites
+     */
+    #switchToSwimSprites() {
+        this.#switchedToSwim = true;
 
-        const gioSwimSprite = this.game.assets.getImage('gio-swim');
-        const tamoSwimSprite = this.game.assets.getImage('tamo-swim');
+        const gioSwimSprite = this.game.assets.getImage(SPRITE_KEYS.GIO_SWIM);
+        const tamoSwimSprite = this.game.assets.getImage(SPRITE_KEYS.TAMO_SWIM);
 
         if (gioSwimSprite) {
             this.gio.spritesheet = gioSwimSprite;
@@ -116,294 +224,349 @@ class SceneB_StoneBeach extends Scene {
             this.tamo.frameWidth = this.game.tamoSwimFrameWidth || this.game.tamoFrameWidth;
             this.tamo.frameHeight = this.game.tamoSwimFrameHeight || this.game.tamoFrameHeight;
             this.tamo.renderMode = 'swimming';
-            this.tamo.widthMultiplier = 1.0;  // full width for swim sprite
+            this.tamo.widthMultiplier = 1.0;
         }
 
         this.gio.setAnimation('swim');
         this.tamo.setAnimation('swim');
     }
 
-    onNoClicked() {
-        // shrinkNoButton now handles animation internally (no factor needed)
-        // Each click shrinks NO by 25% and expands YES accordingly
+    /**
+     * Handle NO button click
+     */
+    #onNoClicked() {
+        // shrinkNoButton handles animation internally
     }
 
+    /**
+     * Update scene
+     * @param {number} dt - Delta time in seconds
+     */
     update(dt) {
         super.update(dt);
-        this.time += dt;
+        this.#time += dt;
 
-        this.waterAnimation.update(dt);
-        this.splashEffect.update(dt);
-        this.rippleEffect.update(dt);
+        this.#waterAnimation.update(dt);
+        this.#splashEffect.update(dt);
+        this.#rippleEffect.update(dt);
 
-        // Update new effects
-        this.fireflies.update(dt);
-        this.shootingStars.update(dt);
-        this.touchHearts.update(dt);
-        this.moonReflection.update(dt);
-        this.dynamicWaves.update(dt);
+        this.#fireflies.update(dt);
+        this.#shootingStars.update(dt);
+        this.#touchHearts.update(dt);
+        this.#moonReflection.update(dt);
+        this.#dynamicWaves.update(dt);
 
-        // Moon reflection ripples (below water level)
-        this.rippleTimer += dt;
-        if (this.rippleTimer > 2.5) {
-            this.rippleTimer = 0;
-            this.rippleEffect.emit(380, this.waterLevel + 20);
+        // Moon reflection ripples
+        this.#rippleTimer += dt;
+        if (this.#rippleTimer > 2.5) {
+            this.#rippleTimer = 0;
+            this.#rippleEffect.emit(380, this.#waterLevel + 20);
         }
 
-        if (this.endingSequenceActive) {
-            this.updateEndingSequence(dt);
+        if (this.#endingSequenceActive) {
+            this.#updateEndingSequence(dt);
         } else {
-            // Idle standing animation - subtle breathing/swaying like in Scene A
-            // Each character has slightly different timing for natural feel
-            const tamoBreath = Math.sin(this.time * 1.8) * 1.5;
-            const tamoSway = Math.sin(this.time * 0.9) * 0.5;
-            this.tamo.y = this.tamoBaseY + tamoBreath;
-
-            const gioBreath = Math.sin(this.time * 1.6 + 0.5) * 1.5;
-            const gioSway = Math.sin(this.time * 1.1 + 0.3) * 0.5;
-            this.gio.y = this.gioBaseY + gioBreath;
+            this.#updateIdleAnimation();
         }
     }
 
+    /**
+     * Update idle breathing animation
+     */
+    #updateIdleAnimation() {
+        const tamoBreath = Math.sin(this.#time * 1.8) * 1.5;
+        this.tamo.y = this.#tamoBaseY + tamoBreath;
+
+        const gioBreath = Math.sin(this.#time * 1.6 + 0.5) * 1.5;
+        this.gio.y = this.#gioBaseY + gioBreath;
+    }
+
+    /**
+     * Handle click event
+     * @param {number} x - Click X position
+     * @param {number} y - Click Y position
+     * @returns {boolean} True if click was handled
+     */
     handleClick(x, y) {
-        // Spawn hearts on click anywhere
-        this.touchHearts.emit(x, y, 3);
+        this.#touchHearts.emit(x, y, 3);
         return super.handleClick(x, y);
     }
 
-    updateEndingSequence(dt) {
-        this.endingTimer += dt;
-        const t = this.endingTimer;
+    /**
+     * Update ending sequence phases
+     * @param {number} dt - Delta time in seconds
+     */
+    #updateEndingSequence(dt) {
+        this.#endingTimer += dt;
+        const t = this.#endingTimer;
 
-        // Swimming Y position (fixed at water level with gentle bobbing)
-        const swimY = this.waterLevel + 25;
-        // Slower bobbing for more natural feel
+        const swimY = this.#waterLevel + SWIM_CONFIG.Y_OFFSET;
         const bobAmount = Math.sin(t * 1.5) * 4;
 
-        // Phase 1: 0s - 1.2s: Stand with NAKED sprites, no flipping
-        if (t < 1.2) {
-            this.gio.setAnimation('stand');
-            this.tamo.setAnimation('stand');
-            // Keep default orientation (no flip)
-            this.gio.flipX = false;
-            this.tamo.flipX = false;
+        // Phase 1: Stand with naked sprites
+        if (t < ENDING_PHASES.STAND_NAKED.end) {
+            this.#updatePhaseStandNaked();
         }
 
-        // Phase 2: 1.2s - 2.5s: Walk toward water while naked
-        if (t >= 1.2 && t < 2.5) {
-            const walkProgress = (t - 1.2) / 1.3;
-
-            // Move up toward water
-            this.gio.y = lerp(230, 205, walkProgress);
-            this.tamo.y = lerp(230, 205, walkProgress);
-
-            // Come together and move toward center
-            this.gio.x = lerp(280, 245, walkProgress);
-            this.tamo.x = lerp(200, 215, walkProgress);
-
-            this.gio.setAnimation('walk');
-            this.tamo.setAnimation('walk');
-
-            // Both face forward (toward water/up)
-            this.gio.flipX = false;
-            this.tamo.flipX = false;
+        // Phase 2: Walk toward water
+        if (t >= ENDING_PHASES.WALK_TO_WATER.start && t < ENDING_PHASES.WALK_TO_WATER.end) {
+            this.#updatePhaseWalkToWater(t);
         }
 
-        // Phase 3: At 2.5s - Switch to SWIM sprites with big splash
-        if (t >= 2.5 && !this.switchedToSwim) {
-            this.switchToSwimSprites();
-            // Big splash when entering water
-            this.splashEffect.emit(this.gio.x, this.waterLevel + 5, 8);
-            this.splashEffect.emit(this.tamo.x, this.waterLevel + 5, 8);
-            this.splashEffect.emit((this.gio.x + this.tamo.x) / 2, this.waterLevel + 5, 6);
+        // Phase 3: Switch to swim sprites
+        if (t >= ENDING_PHASES.ENTER_WATER.start && !this.#switchedToSwim) {
+            this.#switchToSwimSprites();
+            this.#emitEntrySplashes();
         }
 
-        // Phase 4: 2.5s - 4s: Enter water with splash transition
-        if (t >= 2.5 && t < 4.0) {
-            const enterProgress = (t - 2.5) / 1.5;
-
-            // Dive into water
-            this.gio.y = lerp(205, swimY, enterProgress);
-            this.tamo.y = lerp(205, swimY, enterProgress);
-
-            // Come closer together
-            this.gio.x = lerp(245, 235, enterProgress);
-            this.tamo.x = lerp(215, 205, enterProgress);
-
-            this.gio.setAnimation('swim');
-            this.tamo.setAnimation('swim');
-
-            // Face each other while entering
-            this.gio.flipX = true;
-            this.tamo.flipX = false;
-
-            // Continuous splashes during entry
-            if (Math.random() < 0.25) {
-                this.splashEffect.emit(this.gio.x, this.waterLevel + 8, 4);
-                this.splashEffect.emit(this.tamo.x, this.waterLevel + 8, 4);
-            }
+        // Phase 4: Enter water
+        if (t >= ENDING_PHASES.ENTER_WATER.start && t < ENDING_PHASES.SETTLE.start) {
+            this.#updatePhaseEnterWater(t, swimY);
         }
 
-        // Phase 5: 4s - 5s: Settle in water, facing each other
-        if (t >= 4.0 && t < 5.0) {
-            // Stay close together, gentle movement
-            const settleProgress = (t - 4.0) / 1.0;
-
-            this.gio.x = lerp(235, 240, settleProgress);
-            this.tamo.x = lerp(205, 200, settleProgress);
-
-            // Gentle bobbing
-            this.gio.y = swimY + bobAmount * 0.5;
-            this.tamo.y = swimY + bobAmount * 0.5 + Math.sin(t * 1.5 + 0.5) * 2;
-
-            // Face each other
-            this.gio.flipX = true;
-            this.tamo.flipX = false;
+        // Phase 5: Settle in water
+        if (t >= ENDING_PHASES.SETTLE.start && t < ENDING_PHASES.SWIM_TOGETHER.start) {
+            this.#updatePhaseSettle(t, swimY, bobAmount);
         }
 
-        // Phase 6: 5s - 13s: Slow romantic swimming together (SLOWER)
-        if (t >= 5.0 && t < 13.0) {
-            const swimTime = t - 5.0;  // Time since swimming started
-
-            // Slower, more natural swimming pattern
-            // Use sine wave for organic movement instead of linear
-            // 0-4s: drift right together
-            // 4-8s: drift left together
-            // 8+s: settle in center facing each other
-
-            let baseX;
-            const driftAmount = 70; // How far they drift side to side
-
-            if (swimTime < 4.0) {
-                // Drifting right - use eased movement
-                const progress = swimTime / 4.0;
-                const easedProgress = 0.5 - 0.5 * Math.cos(progress * Math.PI);
-                baseX = lerp(200, 200 + driftAmount, easedProgress);
-                // Both face same direction (right)
-                this.gio.flipX = false;
-                this.tamo.flipX = false;
-            } else if (swimTime < 8.0) {
-                // Drifting left - use eased movement
-                const progress = (swimTime - 4.0) / 4.0;
-                const easedProgress = 0.5 - 0.5 * Math.cos(progress * Math.PI);
-                baseX = lerp(200 + driftAmount, 200 - driftAmount, easedProgress);
-                // Both face same direction (left)
-                this.gio.flipX = true;
-                this.tamo.flipX = true;
-            } else {
-                // Settle in center, face each other
-                const progress = Math.min((swimTime - 8.0) / 1.5, 1.0);
-                const easedProgress = 0.5 - 0.5 * Math.cos(progress * Math.PI);
-                baseX = lerp(200 - driftAmount, 220, easedProgress);
-                // Face each other
-                this.gio.flipX = true;
-                this.tamo.flipX = false;
-            }
-
-            // Position characters close together - Tamo slightly ahead
-            this.tamo.x = baseX;
-            this.gio.x = baseX + 30;
-
-            // Natural bobbing with slightly different phases for each character
-            const gioBob = Math.sin(t * 1.2) * 5 + Math.sin(t * 2.5) * 1.5;
-            const tamoBob = Math.sin(t * 1.2 + 0.4) * 5 + Math.sin(t * 2.5 + 0.6) * 1.5;
-
-            this.gio.y = swimY + gioBob;
-            this.tamo.y = swimY + tamoBob;
-
-            // Very occasional gentle splashes
-            if (Math.random() < 0.015) {
-                this.splashEffect.emit(this.gio.x + (Math.random() - 0.5) * 10, this.waterLevel + 8, 2);
-            }
-            if (Math.random() < 0.015) {
-                this.splashEffect.emit(this.tamo.x + (Math.random() - 0.5) * 10, this.waterLevel + 8, 2);
-            }
-
-            // Add ripples around them occasionally
-            if (Math.random() < 0.025) {
-                const rippleX = (this.gio.x + this.tamo.x) / 2 + (Math.random() - 0.5) * 30;
-                this.rippleEffect.emit(rippleX, this.waterLevel + 15);
-            }
+        // Phase 6: Swim together
+        if (t >= ENDING_PHASES.SWIM_TOGETHER.start && t < ENDING_PHASES.FADE_OUT.end) {
+            this.#updatePhaseSwimTogether(t, swimY);
         }
 
-        // Phase 7: 11.5s - 13s: Fade to black
-        if (t >= 11.5 && t < 13.0) {
-            this.fadeAlpha = (t - 11.5) / 1.5;
+        // Phase 7: Fade to black
+        if (t >= ENDING_PHASES.FADE_OUT.start && t < ENDING_PHASES.FADE_OUT.end) {
+            this.#fadeAlpha = (t - ENDING_PHASES.FADE_OUT.start) /
+                             (ENDING_PHASES.FADE_OUT.end - ENDING_PHASES.FADE_OUT.start);
         }
 
-        // Phase 8: 13s: Transition to end screen
-        if (t >= 13.0) {
+        // Phase 8: Transition to end screen
+        if (t >= ENDING_PHASES.FADE_OUT.end) {
             this.game.stateMachine.setState('sceneC');
         }
     }
 
+    /**
+     * Phase 1: Standing with naked sprites
+     */
+    #updatePhaseStandNaked() {
+        this.gio.setAnimation('stand');
+        this.tamo.setAnimation('stand');
+        this.gio.flipX = false;
+        this.tamo.flipX = false;
+    }
+
+    /**
+     * Phase 2: Walking toward water
+     * @param {number} t - Current time
+     */
+    #updatePhaseWalkToWater(t) {
+        const progress = (t - ENDING_PHASES.WALK_TO_WATER.start) /
+                        (ENDING_PHASES.WALK_TO_WATER.end - ENDING_PHASES.WALK_TO_WATER.start);
+
+        this.gio.y = lerp(230, 205, progress);
+        this.tamo.y = lerp(230, 205, progress);
+
+        this.gio.x = lerp(280, 245, progress);
+        this.tamo.x = lerp(200, 215, progress);
+
+        this.gio.setAnimation('walk');
+        this.tamo.setAnimation('walk');
+
+        this.gio.flipX = false;
+        this.tamo.flipX = false;
+    }
+
+    /**
+     * Emit splash effects when entering water
+     */
+    #emitEntrySplashes() {
+        this.#splashEffect.emit(this.gio.x, this.#waterLevel + 5, 8);
+        this.#splashEffect.emit(this.tamo.x, this.#waterLevel + 5, 8);
+        this.#splashEffect.emit((this.gio.x + this.tamo.x) / 2, this.#waterLevel + 5, 6);
+    }
+
+    /**
+     * Phase 4: Entering water
+     * @param {number} t - Current time
+     * @param {number} swimY - Swimming Y position
+     */
+    #updatePhaseEnterWater(t, swimY) {
+        const progress = (t - ENDING_PHASES.ENTER_WATER.start) /
+                        (ENDING_PHASES.SETTLE.start - ENDING_PHASES.ENTER_WATER.start);
+
+        this.gio.y = lerp(205, swimY, progress);
+        this.tamo.y = lerp(205, swimY, progress);
+
+        this.gio.x = lerp(245, 235, progress);
+        this.tamo.x = lerp(215, 205, progress);
+
+        this.gio.setAnimation('swim');
+        this.tamo.setAnimation('swim');
+
+        this.gio.flipX = true;
+        this.tamo.flipX = false;
+
+        // Continuous splashes
+        if (Math.random() < 0.25) {
+            this.#splashEffect.emit(this.gio.x, this.#waterLevel + 8, 4);
+            this.#splashEffect.emit(this.tamo.x, this.#waterLevel + 8, 4);
+        }
+    }
+
+    /**
+     * Phase 5: Settling in water
+     * @param {number} t - Current time
+     * @param {number} swimY - Swimming Y position
+     * @param {number} bobAmount - Bobbing amount
+     */
+    #updatePhaseSettle(t, swimY, bobAmount) {
+        const progress = (t - ENDING_PHASES.SETTLE.start) /
+                        (ENDING_PHASES.SWIM_TOGETHER.start - ENDING_PHASES.SETTLE.start);
+
+        this.gio.x = lerp(235, 240, progress);
+        this.tamo.x = lerp(205, 200, progress);
+
+        this.gio.y = swimY + bobAmount * 0.5;
+        this.tamo.y = swimY + bobAmount * 0.5 + Math.sin(t * 1.5 + 0.5) * 2;
+
+        this.gio.flipX = true;
+        this.tamo.flipX = false;
+    }
+
+    /**
+     * Phase 6: Swimming together
+     * @param {number} t - Current time
+     * @param {number} swimY - Swimming Y position
+     */
+    #updatePhaseSwimTogether(t, swimY) {
+        const swimTime = t - ENDING_PHASES.SWIM_TOGETHER.start;
+        const driftAmount = SWIM_CONFIG.DRIFT_AMOUNT;
+
+        let baseX;
+
+        if (swimTime < 4.0) {
+            // Drifting right
+            const progress = swimTime / 4.0;
+            const easedProgress = 0.5 - 0.5 * Math.cos(progress * Math.PI);
+            baseX = lerp(200, 200 + driftAmount, easedProgress);
+            this.gio.flipX = false;
+            this.tamo.flipX = false;
+        } else if (swimTime < 8.0) {
+            // Drifting left
+            const progress = (swimTime - 4.0) / 4.0;
+            const easedProgress = 0.5 - 0.5 * Math.cos(progress * Math.PI);
+            baseX = lerp(200 + driftAmount, 200 - driftAmount, easedProgress);
+            this.gio.flipX = true;
+            this.tamo.flipX = true;
+        } else {
+            // Settle in center
+            const progress = Math.min((swimTime - 8.0) / 1.5, 1.0);
+            const easedProgress = 0.5 - 0.5 * Math.cos(progress * Math.PI);
+            baseX = lerp(200 - driftAmount, 220, easedProgress);
+            this.gio.flipX = true;
+            this.tamo.flipX = false;
+        }
+
+        this.tamo.x = baseX;
+        this.gio.x = baseX + SWIM_CONFIG.COUPLE_SPACING;
+
+        // Natural bobbing
+        const gioBob = Math.sin(t * 1.2) * 5 + Math.sin(t * 2.5) * 1.5;
+        const tamoBob = Math.sin(t * 1.2 + 0.4) * 5 + Math.sin(t * 2.5 + 0.6) * 1.5;
+
+        this.gio.y = swimY + gioBob;
+        this.tamo.y = swimY + tamoBob;
+
+        // Occasional splashes
+        if (Math.random() < 0.015) {
+            this.#splashEffect.emit(this.gio.x + (Math.random() - 0.5) * 10, this.#waterLevel + 8, 2);
+        }
+        if (Math.random() < 0.015) {
+            this.#splashEffect.emit(this.tamo.x + (Math.random() - 0.5) * 10, this.#waterLevel + 8, 2);
+        }
+
+        // Ripples
+        if (Math.random() < 0.025) {
+            const rippleX = (this.gio.x + this.tamo.x) / 2 + (Math.random() - 0.5) * 30;
+            this.#rippleEffect.emit(rippleX, this.#waterLevel + 15);
+        }
+    }
+
+    /**
+     * Render background
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     */
     renderBackground(ctx) {
-        // Draw background image if available
         const bgImage = this.game.assets.getImage('background-b');
         if (bgImage) {
             ctx.drawImage(bgImage, 0, 0, INTERNAL_WIDTH, INTERNAL_HEIGHT);
         } else {
-            // Fallback: Night sky - pink romantic theme
-            const skyGradient = ctx.createLinearGradient(0, 0, 0, 140);
-            skyGradient.addColorStop(0, '#0f050a');
-            skyGradient.addColorStop(0.5, '#1a0a14');
-            skyGradient.addColorStop(1, '#2a1a24');
-            ctx.fillStyle = skyGradient;
-            ctx.fillRect(0, 0, INTERNAL_WIDTH, 140);
-
-            // Stars
-            ctx.fillStyle = '#ffffff';
-            for (let i = 0; i < 70; i++) {
-                const x = (i * 29 + 7) % INTERNAL_WIDTH;
-                const y = (i * 11 + 3) % 100 + 5;
-                const twinkle = Math.sin(this.time * 2 + i * 0.5) * 0.3 + 0.7;
-                ctx.globalAlpha = twinkle * 0.7;
-                ctx.fillRect(Math.floor(x), Math.floor(y), 1, 1);
-            }
-            ctx.globalAlpha = 1;
-
-            // Moon - pink tint
-            ctx.fillStyle = '#ffeeef';
-            ctx.beginPath();
-            ctx.arc(400, 45, 22, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Moon glow - pink
-            ctx.globalAlpha = 0.15;
-            ctx.fillStyle = '#ffaaaa';
-            ctx.beginPath();
-            ctx.arc(400, 45, 35, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.globalAlpha = 1;
-
-            // Distant city glow - pink tint
-            ctx.fillStyle = '#1a1018';
-            this.drawDistantCity(ctx, 105);
-
-            // Water
-            this.waterAnimation.render(ctx);
-
-            // Stone beach
-            this.drawStoneBeach(ctx, 210);
+            this.#renderFallbackBackground(ctx);
         }
 
-        // Dynamic waves overlay
-        this.dynamicWaves.render(ctx);
-
-        // Moon reflection on water
-        this.moonReflection.render(ctx);
-
-        // Ripples (always rendered as overlay)
-        this.rippleEffect.render(ctx);
-
-        // Shooting stars
-        this.shootingStars.render(ctx);
-
-        // Fireflies
-        this.fireflies.render(ctx);
+        this.#dynamicWaves.render(ctx);
+        this.#moonReflection.render(ctx);
+        this.#rippleEffect.render(ctx);
+        this.#shootingStars.render(ctx);
+        this.#fireflies.render(ctx);
     }
 
-    drawDistantCity(ctx, y) {
+    /**
+     * Render fallback background
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     */
+    #renderFallbackBackground(ctx) {
+        // Night sky
+        const skyGradient = ctx.createLinearGradient(0, 0, 0, 140);
+        skyGradient.addColorStop(0, '#0f050a');
+        skyGradient.addColorStop(0.5, '#1a0a14');
+        skyGradient.addColorStop(1, '#2a1a24');
+        ctx.fillStyle = skyGradient;
+        ctx.fillRect(0, 0, INTERNAL_WIDTH, 140);
+
+        // Stars
+        ctx.fillStyle = '#ffffff';
+        for (let i = 0; i < 70; i++) {
+            const x = (i * 29 + 7) % INTERNAL_WIDTH;
+            const y = (i * 11 + 3) % 100 + 5;
+            const twinkle = Math.sin(this.#time * 2 + i * 0.5) * 0.3 + 0.7;
+            ctx.globalAlpha = twinkle * 0.7;
+            ctx.fillRect(Math.floor(x), Math.floor(y), 1, 1);
+        }
+        ctx.globalAlpha = 1;
+
+        // Moon
+        ctx.fillStyle = '#ffeeef';
+        ctx.beginPath();
+        ctx.arc(400, 45, 22, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Moon glow
+        ctx.globalAlpha = 0.15;
+        ctx.fillStyle = '#ffaaaa';
+        ctx.beginPath();
+        ctx.arc(400, 45, 35, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // Distant city
+        ctx.fillStyle = '#1a1018';
+        this.#drawDistantCity(ctx, 105);
+
+        // Water
+        this.#waterAnimation.render(ctx);
+
+        // Stone beach
+        this.#drawStoneBeach(ctx, 210);
+    }
+
+    /**
+     * Draw distant city silhouette
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     * @param {number} y - Y position
+     */
+    #drawDistantCity(ctx, y) {
         ctx.beginPath();
         ctx.moveTo(0, y + 35);
 
@@ -411,30 +574,36 @@ class SceneB_StoneBeach extends Scene {
         let x = 0;
         const buildingWidth = INTERNAL_WIDTH / buildings.length;
 
-        buildings.forEach((height, i) => {
+        for (const height of buildings) {
             ctx.lineTo(x, y + 35 - height);
             ctx.lineTo(x + buildingWidth - 3, y + 35 - height);
             x += buildingWidth;
-        });
+        }
 
         ctx.lineTo(INTERNAL_WIDTH, y + 35);
         ctx.fill();
 
-        // Tiny lights - pink tint
+        // City lights
         ctx.fillStyle = '#ff8888';
         x = 4;
-        buildings.forEach((height, i) => {
+        for (let i = 0; i < buildings.length; i++) {
+            const height = buildings[i];
             for (let ly = y + 35 - height + 3; ly < y + 32; ly += 5) {
-                if (Math.sin(this.time + i + ly) > 0.3) {
+                if (Math.sin(this.#time + i + ly) > 0.3) {
                     ctx.fillRect(x + Math.floor(Math.random() * 18), Math.floor(ly), 1, 1);
                 }
             }
             x += buildingWidth;
-        });
+        }
     }
 
-    drawStoneBeach(ctx, y) {
-        // Beach gradient - pink-tinted dark tones
+    /**
+     * Draw stone beach
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     * @param {number} y - Y position
+     */
+    #drawStoneBeach(ctx, y) {
+        // Beach gradient
         const beachGradient = ctx.createLinearGradient(0, y, 0, INTERNAL_HEIGHT);
         beachGradient.addColorStop(0, '#4a3a44');
         beachGradient.addColorStop(0.5, '#3a2a34');
@@ -442,7 +611,7 @@ class SceneB_StoneBeach extends Scene {
         ctx.fillStyle = beachGradient;
         ctx.fillRect(0, y, INTERNAL_WIDTH, INTERNAL_HEIGHT - y);
 
-        // Stones - pink tint
+        // Light stones
         ctx.fillStyle = '#5a4a54';
         for (let i = 0; i < 60; i++) {
             const sx = (i * 37 + 5) % INTERNAL_WIDTH;
@@ -453,7 +622,7 @@ class SceneB_StoneBeach extends Scene {
             ctx.fill();
         }
 
-        // Darker stones - pink tint
+        // Dark stones
         ctx.fillStyle = '#3a2a34';
         for (let i = 0; i < 30; i++) {
             const sx = (i * 51 + 20) % INTERNAL_WIDTH;
@@ -465,15 +634,17 @@ class SceneB_StoneBeach extends Scene {
         }
     }
 
+    /**
+     * Render scene
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     */
     render(ctx) {
         super.render(ctx);
 
-        // Splash effects
-        this.splashEffect.render(ctx);
+        this.#splashEffect.render(ctx);
 
-        // Water overlay on characters when they're in water
-        if (this.endingSequenceActive && this.gio.y < 210) {
-            // Draw semi-transparent water over lower part of characters - pink tint
+        // Water overlay on characters
+        if (this.#endingSequenceActive && this.gio.y < 210) {
             const waterLevel = 200;
             if (this.gio.y < waterLevel + 30) {
                 ctx.fillStyle = 'rgba(60, 30, 50, 0.4)';
@@ -483,13 +654,14 @@ class SceneB_StoneBeach extends Scene {
             }
         }
 
-        // Touch hearts
-        this.touchHearts.render(ctx);
+        this.#touchHearts.render(ctx);
 
         // Fade overlay
-        if (this.fadeAlpha > 0) {
-            ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(this.fadeAlpha, 1)})`;
+        if (this.#fadeAlpha > 0) {
+            ctx.fillStyle = `rgba(0, 0, 0, ${Math.min(this.#fadeAlpha, 1)})`;
             ctx.fillRect(0, 0, INTERNAL_WIDTH, INTERNAL_HEIGHT);
         }
     }
 }
+
+export default SceneB_StoneBeach;
