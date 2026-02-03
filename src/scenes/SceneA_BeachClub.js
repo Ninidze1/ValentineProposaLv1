@@ -37,6 +37,10 @@ class SceneA_BeachClub extends Scene {
         this.heartBurstActive = false;
         this.crowdOffset = 0;
 
+        // New effects
+        this.shootingStars = new ShootingStars();
+        this.touchHearts = new TouchHearts();
+
         // Lights - pink/romantic colors
         this.lights = [];
         for (let i = 0; i < 6; i++) {
@@ -74,6 +78,16 @@ class SceneA_BeachClub extends Scene {
         this.lights.forEach(light => {
             light.angle += dt * 2;
         });
+
+        // Update new effects
+        this.shootingStars.update(dt);
+        this.touchHearts.update(dt);
+    }
+
+    handleClick(x, y) {
+        // Spawn hearts on click anywhere
+        this.touchHearts.emit(x, y, 3);
+        return super.handleClick(x, y);
     }
 
     renderBackground(ctx) {
@@ -140,6 +154,16 @@ class SceneA_BeachClub extends Scene {
 
         // Neon sign (always rendered)
         this.drawNeonSign(ctx, INTERNAL_WIDTH / 2, 30);
+
+        // Shooting stars
+        this.shootingStars.render(ctx);
+    }
+
+    render(ctx) {
+        super.render(ctx);
+
+        // Touch hearts on top of everything
+        this.touchHearts.render(ctx);
     }
 
     drawCitySilhouette(ctx, y) {

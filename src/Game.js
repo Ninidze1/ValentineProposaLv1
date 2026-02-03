@@ -60,7 +60,28 @@ class Game {
         const tamoSheet = this.createAnimationSheet(tamoImg);
         this.assets.images.set('tamo', tamoSheet);
 
-        // Load swim sprites
+        // Load naked sprites (for undressing before swim)
+        try {
+            const gioNakedImg = await this.loadImageAsync('assets/sprites/gio-naked.png');
+            this.gioNakedFrameWidth = gioNakedImg.width;
+            this.gioNakedFrameHeight = gioNakedImg.height;
+            const gioNakedSheet = this.createAnimationSheet(gioNakedImg);
+            this.assets.images.set('gio-naked', gioNakedSheet);
+        } catch (e) {
+            console.warn('Gio naked sprite not found');
+        }
+
+        try {
+            const tamoNakedImg = await this.loadImageAsync('assets/sprites/tamo-naked.png');
+            this.tamoNakedFrameWidth = tamoNakedImg.width;
+            this.tamoNakedFrameHeight = tamoNakedImg.height;
+            const tamoNakedSheet = this.createAnimationSheet(tamoNakedImg);
+            this.assets.images.set('tamo-naked', tamoNakedSheet);
+        } catch (e) {
+            console.warn('Tamo naked sprite not found');
+        }
+
+        // Load swim sprites (for swimming in water)
         try {
             const gioSwimImg = await this.loadImageAsync('assets/sprites/gio-swim.png');
             this.gioSwimFrameWidth = gioSwimImg.width;

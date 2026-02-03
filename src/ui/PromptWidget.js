@@ -9,31 +9,54 @@ class PromptWidget {
         this.noButtonScale = 1;
         this.noButtonHidden = false;
 
-        // Position at bottom of screen - compact
-        this.x = INTERNAL_WIDTH / 2;
-        this.y = INTERNAL_HEIGHT - 40;
+        // Parse question lines (split by \n)
+        this.questionLines = this.question.split('\n').map(line => line.trim());
 
-        // Button dimensions
-        const buttonWidth = 50;
-        const buttonHeight = 18;
-        const buttonSpacing = 40;  // Spacing between buttons
+        // Layout constants - compact UI spacing
+        this.padding = 8;            // Padding inside the frame
+        this.lineHeight = 11;        // Space between text lines
+        this.textButtonGap = 6;      // Gap between text and buttons
+        this.buttonWidth = 44;
+        this.buttonHeight = 14;
+        this.buttonGap = 16;         // Gap between YES and NO buttons
+
+        // Calculate content dimensions
+        const textHeight = this.questionLines.length * this.lineHeight;
+        const contentHeight = textHeight + this.textButtonGap + this.buttonHeight;
+        const frameHeight = contentHeight + (this.padding * 2);
+        const frameWidth = 220;
+
+        // Position frame at bottom center
+        this.frameX = (INTERNAL_WIDTH - frameWidth) / 2;
+        this.frameY = INTERNAL_HEIGHT - frameHeight - 8; // 8px from bottom
+        this.frameWidth = frameWidth;
+        this.frameHeight = frameHeight;
+
+        // Calculate text position (centered horizontally, top of content area)
+        this.textX = INTERNAL_WIDTH / 2;
+        this.textStartY = this.frameY + this.padding + 8; // +8 for text baseline
+
+        // Calculate button positions (centered horizontally, below text)
+        const buttonsY = this.frameY + this.padding + textHeight + this.textButtonGap;
+        const totalButtonsWidth = (this.buttonWidth * 2) + this.buttonGap;
+        const buttonsStartX = (INTERNAL_WIDTH - totalButtonsWidth) / 2;
 
         // Create buttons
         this.yesButton = new Button({
-            x: this.x - buttonWidth - buttonSpacing / 2,
-            y: this.y + 6,
-            width: buttonWidth,
-            height: buttonHeight,
+            x: buttonsStartX,
+            y: buttonsY,
+            width: this.buttonWidth,
+            height: this.buttonHeight,
             text: "YES",
             color: COLORS.pink,
             onClick: () => this.handleYes()
         });
 
         this.noButton = new Button({
-            x: this.x + buttonSpacing / 2,
-            y: this.y + 6,
-            width: buttonWidth,
-            height: buttonHeight,
+            x: buttonsStartX + this.buttonWidth + this.buttonGap,
+            y: buttonsY,
+            width: this.buttonWidth,
+            height: this.buttonHeight,
             text: "NO",
             color: COLORS.gray,
             onClick: () => this.handleNo()
@@ -109,38 +132,41 @@ class PromptWidget {
     render(ctx) {
         if (!this.visible) return;
 
-        // Compact question background
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        const bgWidth = 280;
-        const bgHeight = 56;  // Taller for more margin
-        const bgX = Math.floor(this.x - bgWidth / 2);
-        const bgY = Math.floor(this.y - 18);
+        // Draw frame background with rounded corners
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        const radius = 8;
+        const x = this.frameX;
+        const y = this.frameY;
+        const w = this.frameWidth;
+        const h = this.frameHeight;
 
         ctx.beginPath();
-        const radius = 8;
-        ctx.moveTo(bgX + radius, bgY);
-        ctx.lineTo(bgX + bgWidth - radius, bgY);
-        ctx.quadraticCurveTo(bgX + bgWidth, bgY, bgX + bgWidth, bgY + radius);
-        ctx.lineTo(bgX + bgWidth, bgY + bgHeight - radius);
-        ctx.quadraticCurveTo(bgX + bgWidth, bgY + bgHeight, bgX + bgWidth - radius, bgY + bgHeight);
-        ctx.lineTo(bgX + radius, bgY + bgHeight);
-        ctx.quadraticCurveTo(bgX, bgY + bgHeight, bgX, bgY + bgHeight - radius);
-        ctx.lineTo(bgX, bgY + radius);
-        ctx.quadraticCurveTo(bgX, bgY, bgX + radius, bgY);
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + w - radius, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+        ctx.lineTo(x + w, y + h - radius);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+        ctx.lineTo(x + radius, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
         ctx.fill();
 
-        // Subtle border
+        // Draw border
         ctx.strokeStyle = 'rgba(255, 107, 107, 0.5)';
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        // Question text
+        // Draw question text (centered)
         ctx.fillStyle = COLORS.white;
-        ctx.font = '10px monospace';
+        ctx.font = '8px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText(this.question, Math.floor(this.x), Math.floor(this.y - 3));
 
-        // Buttons
+        this.questionLines.forEach((line, i) => {
+            ctx.fillText(line, this.textX, this.textStartY + (i * this.lineHeight));
+        });
+
+        // Draw buttons
         this.yesButton.render(ctx);
         if (!this.noButtonHidden) {
             this.noButton.render(ctx);

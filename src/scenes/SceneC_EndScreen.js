@@ -35,6 +35,10 @@ class SceneC_EndScreen extends Scene {
         for (let i = 0; i < 15; i++) {
             this.spawnFloatingHeart();
         }
+
+        // Touch hearts effect
+        this.touchHearts = new TouchHearts();
+        this.shootingStars = new ShootingStars();
     }
 
     spawnFloatingHeart() {
@@ -66,6 +70,15 @@ class SceneC_EndScreen extends Scene {
         });
 
         this.floatingHearts = this.floatingHearts.filter(h => h.y > -20);
+
+        this.touchHearts.update(dt);
+        this.shootingStars.update(dt);
+    }
+
+    handleClick(x, y) {
+        // Spawn hearts on click anywhere
+        this.touchHearts.emit(x, y, 5);
+        return super.handleClick(x, y);
     }
 
     renderBackground(ctx) {
@@ -106,6 +119,9 @@ class SceneC_EndScreen extends Scene {
             }
         });
         ctx.globalAlpha = 1;
+
+        // Shooting stars
+        this.shootingStars.render(ctx);
     }
 
     render(ctx) {
@@ -146,6 +162,9 @@ class SceneC_EndScreen extends Scene {
 
         // UI
         this.ui.forEach(u => u.render(ctx));
+
+        // Touch hearts on top
+        this.touchHearts.render(ctx);
     }
 
     drawPixelHeart(ctx, x, y, size) {
