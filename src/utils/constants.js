@@ -112,7 +112,7 @@ export const CHARACTER = Object.freeze({
  * @type {Readonly<Object>}
  */
 export const SCENE_A_CONFIG = Object.freeze({
-    TAMO_X: 80,
+    TAMO_X: 190,
     TAMO_Y: 210,
     GIO_X: 400,
     GIO_Y: 210,
