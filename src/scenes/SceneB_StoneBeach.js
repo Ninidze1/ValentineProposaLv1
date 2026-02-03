@@ -31,7 +31,7 @@ class SceneB_StoneBeach extends Scene {
 
         // Prompt widget
         this.prompt = new PromptWidget({
-            question: "Are you sure you want to be my Valentine?",
+            question: "Will you be my Valentine tonight, and every day after?",
             onYes: () => this.onYesClicked(),
             onNo: () => this.onNoClicked()
         });
